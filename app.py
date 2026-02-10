@@ -44,7 +44,7 @@ def home():
     <h2>LecSnapPdf</h2>
 
     <form id="pdfForm" action="/generate" method="post">
-        <input type="text" name="url" placeholder="YouTube URL" size="50" required>
+        <input type="text" name="url" placeholder="Video URL" size="50" required>
         <br><br>
         <input type="number" name="interval" placeholder="Interval (seconds)" required>
         <br><br>
