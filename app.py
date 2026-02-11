@@ -44,7 +44,10 @@ def home():
             Cloud platforms block video downloading tools like <b>yt-dlp</b>.<br><br>
 
             <strong>Solution:</strong><br>
-            1. Clone the GitHub repository.<br>
+             1. Clone the GitHub repository:
+            <a href="https://github.com/Rishi8603/LecSnapPdf" target="_blank">
+                https://github.com/Rishi8603/LecSnapPdf
+            </a><br>
             2. Run the project locally on your system.<br>
             3. Paste the YouTube URL there — it will download and generate the PDF successfully.<br><br>
 
