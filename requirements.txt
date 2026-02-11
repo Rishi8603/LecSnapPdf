@@ -1,4 +1,4 @@
-flask
-opencv-python
+﻿flask
+opencv-python-headless
 pillow
 yt-dlp
