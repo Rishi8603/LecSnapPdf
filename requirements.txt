@@ -1,4 +1,4 @@
 ﻿flask
-opencv-python-headless==4.13.0.92
+opencv-python
 pillow
 yt-dlp

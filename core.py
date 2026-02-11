@@ -72,7 +72,7 @@ def extract_frames(cap, frames_to_skip):
 def create_pdf():
     os.makedirs("output", exist_ok=True)
 
-    image_files = sorted(os.listdir("frames"))
+    image_files = sorted(os.listdir("frames"), key=lambda x: int(x.split("_")[1].split(".")[0]))
 
     if not image_files:
         print("No frames extracted. PDF not created.")
@@ -134,7 +134,7 @@ def download_youtube_video(url):
     os.makedirs("input", exist_ok=True)
     output_path = "input/lecture.mp4"
 
-    # Prevent reusing an old local file if it already exists
+    
     if os.path.exists(output_path):
         os.remove(output_path)
 
@@ -183,23 +183,23 @@ def format_timestamp(seconds):
     return f"{minutes:02d}:{secs:02d}"
 
 
-def main():
-    video_path = get_video_source()
+def main(video_path, interval_seconds):
+
     if video_path is None:
-      print("Video source not available. Exiting.")
-      exit()
+        print("Video source not available. Exiting.")
+        return
 
     cap = open_video(video_path)
     if cap is None:
         return
-
-    interval_seconds = get_interval_from_user()
 
     clear_frames_folder()
 
     frames_to_skip = get_frames_to_skip(cap, interval_seconds)
     extract_frames(cap, frames_to_skip)
     create_pdf()
+
     cap.release()
+
 
 
