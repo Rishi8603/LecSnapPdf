@@ -235,7 +235,9 @@ def generate_pdf():
 
     return send_file("output/notes.pdf", as_attachment=True)
 
-
+@app.route("/api/health")
+def health():
+    return {"status": "OK"}, 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
