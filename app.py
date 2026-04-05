@@ -281,4 +281,6 @@ async def health():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    uvicorn.run(app, host="127.0.0.1", port=port)
+    is_local = os.environ.get("RENDER") is None  # Render sets this env var automatically
+    host = "127.0.0.1" if is_local else "0.0.0.0"
+    uvicorn.run(app, host=host, port=port)
