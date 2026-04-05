@@ -203,3 +203,47 @@ def main(video_path, interval_seconds):
 
 
 
+def save_frames_as_pdf(frames):
+    """
+    frames: list of (timestamp_seconds, PIL_image) tuples
+    coming directly from smart_extractor.py
+    """
+    os.makedirs("output", exist_ok=True)
+
+    images = []
+
+    for timestamp, pil_img in frames:
+        # Convert PIL to RGB (safety)
+        img = pil_img.convert("RGB")
+        # Force JPEG compatibility for PIL's PDF writer
+        import io
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG")
+        buffer.seek(0)
+        img = Image.open(buffer)
+        img.load()
+
+        # Stamp timestamp on the image using PIL (no OpenCV needed here)
+        from PIL import ImageDraw
+        draw = ImageDraw.Draw(img)
+        label = f"Time: {format_timestamp(timestamp)}"
+        draw.text((20, img.height - 30), label, fill=(255, 255, 255))
+
+        images.append(img)
+
+    if not images:
+        print("No frames to save.")
+        return
+
+    pdf_path = "output/notes.pdf"
+
+    if os.path.exists(pdf_path):
+        os.remove(pdf_path)
+
+    images[0].save(
+        pdf_path,
+        save_all=True,
+        append_images=images[1:]
+    )
+
+    print(f"Smart PDF generated with {len(images)} frames at {pdf_path}")

@@ -1,4 +1,6 @@
-﻿flask
+fastapi
+uvicorn
+python-multipart
 opencv-python
 pillow
 yt-dlp

@@ -1,19 +1,21 @@
-from flask import Flask, request, send_file, jsonify
+from fastapi import FastAPI, Request, UploadFile, File, Form
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 import os
 import core
+import uvicorn
+from smart_extractor import extract_unique_frames
 
-app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = "uploads"
+app = FastAPI()
 
 # Ensure upload + output folders exist
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("output", exist_ok=True)
 
 
-@app.route("/", methods=["GET"])
-def home():
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
 
-    is_local = "localhost" in request.host or "127.0.0.1" in request.host
+    is_local = "localhost" in str(request.url) or "127.0.0.1" in str(request.url)
 
     if is_local:
         info_box = """
@@ -109,7 +111,26 @@ def home():
 
         <br><br>
 
-        <input type="number" name="interval" placeholder="Interval (seconds)" required>
+        <label>
+            <input type="radio" name="mode" value="manual" checked onchange="toggleMode(this)">
+            Manual (enter interval)
+        </label>
+
+        <label>
+            <input type="radio" name="mode" value="smart" onchange="toggleMode(this)">
+            Smart (auto-detect slide changes)
+        </label>
+
+        <br><br>
+
+        <div id="intervalSection">
+            <input type="number" name="interval" placeholder="Interval (seconds)">
+        </div>
+
+        <div id="smartInfo" style="display:none; color:gray; font-size:13px;">
+            Smart mode will automatically capture frames only when the slide changes.
+            <br>Best for: lecture recordings, screencasts.
+        </div>
 
         <br><br>
 
@@ -182,6 +203,17 @@ def home():
             button.disabled = false;
             button.innerText = "Generate PDF";
         }});
+        function toggleMode(radio) {{
+            const intervalSection = document.getElementById("intervalSection");
+            const smartInfo = document.getElementById("smartInfo");
+            if (radio.value === "smart") {{
+                intervalSection.style.display = "none";
+                smartInfo.style.display = "block";
+            }} else {{
+                intervalSection.style.display = "block";
+                smartInfo.style.display = "none";
+            }}
+        }}
     </script>
 
 </body>
@@ -189,56 +221,64 @@ def home():
 """
 
 
-
-@app.route("/generate", methods=["POST"])
-def generate_pdf():
-
-    source_type = request.form.get("source_type")
-    interval = request.form.get("interval")
-
-    if not interval:
-        return jsonify({"error": "Interval missing"}), 400
-
-    try:
-        interval = int(interval)
-    except:
-        return jsonify({"error": "Invalid interval"}), 400
+@app.post("/generate")
+async def generate_pdf(
+    source_type: str = Form(...),
+    mode: str = Form(...),
+    interval: int = Form(None),
+    video_file: UploadFile | None = File(None),
+    url: str = Form(None),
+):
 
     if source_type == "upload":
-        uploaded_file = request.files.get("video_file")
-
-        if not uploaded_file or uploaded_file.filename == "":
-            return jsonify({"error": "No file uploaded"}), 400
+        if not video_file or video_file.filename == "":
+            return JSONResponse({"error": "No file uploaded"}, status_code=400)
 
         os.makedirs("uploads", exist_ok=True)
-        video_path = os.path.join("uploads", uploaded_file.filename)
-        uploaded_file.save(video_path)
+        video_path = os.path.join("uploads", video_file.filename)
+
+        with open(video_path, "wb") as f:
+            content = await video_file.read()
+            f.write(content)
 
     elif source_type == "url":
-        url = request.form.get("url")
-
         if not url:
-            return jsonify({"error": "URL missing"}), 400
+            return JSONResponse({"error": "URL missing"}, status_code=400)
 
         video_path = core.download_youtube_video(url)
 
         if video_path is None:
-            return jsonify({"error": "Download failed"}), 500
+            return JSONResponse({"error": "Download failed"}, status_code=500)
 
     else:
-        return jsonify({"error": "Invalid source selection"}), 400
+        return JSONResponse({"error": "Invalid source selection"}, status_code=400)
 
     try:
-        core.main(video_path, interval)
+        if mode == "smart":
+            # Use perceptual hash dedup
+            frames = extract_unique_frames(video_path, threshold=30)
+            if not frames:
+                return JSONResponse({"error": "No unique frames detected"}, status_code=500)
+            core.save_frames_as_pdf(frames)
+        else:
+            # Original interval mode
+            if not interval:
+                return JSONResponse({"error": "Interval required for manual mode"}, status_code=400)
+            core.main(video_path, interval)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("FULL ERROR:", e)
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": str(e)}, status_code=500)
 
-    return send_file("output/notes.pdf", as_attachment=True)
+    return FileResponse("output/notes.pdf", filename="notes.pdf", media_type="application/pdf")
 
-@app.route("/api/health")
-def health():
-    return {"status": "OK"}, 200
+
+@app.get("/api/health")
+async def health():
+    return {"status": "OK"}
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    uvicorn.run(app, host="127.0.0.1", port=port)
