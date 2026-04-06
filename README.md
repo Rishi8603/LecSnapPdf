@@ -8,7 +8,7 @@ LecSnapPdf captures only the frames that matter, transcribes the audio, and adds
 
 ## 🚀 Try It
 
-**Live Web Version:** [lecsnappdf.onrender.com](https://lecsnappdf.onrender.com/)
+**Live Web Version:** [lecsnappdf.onrender.com](https://lecsnappdf-takh.onrender.com)
 
 > YouTube URL support requires local setup (cloud platforms block yt-dlp). Upload mode works fully on the web version.
 
