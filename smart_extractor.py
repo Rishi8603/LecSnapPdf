@@ -7,7 +7,7 @@ def frame_to_pil(frame):
     return Image.fromarray(rgb)
 
 
-def extract_unique_frames(video_path, threshold=25, cooldown=3):
+def extract_unique_frames(video_path, threshold=25, cooldown=3, crop_center=False):
     cap = cv2.VideoCapture(video_path)
 
     unique_frames = []
@@ -26,7 +26,19 @@ def extract_unique_frames(video_path, threshold=25, cooldown=3):
             continue
 
         pil_img = frame_to_pil(frame)
-        current_hash = imagehash.phash(pil_img)
+
+        if crop_center:
+            # Crop center 70% of frame — ignores webcam corners
+            w, h = pil_img.size
+            left = int(w * 0.15)
+            right = int(w * 0.85)
+            top = int(h * 0.1)
+            bottom = int(h * 0.9)
+            hash_img = pil_img.crop((left, top, right, bottom))
+        else:
+            hash_img = pil_img
+
+        current_hash = imagehash.phash(hash_img)
         timestamp = round(frame_index / fps, 2)
 
         if last_hash is None:

@@ -69,7 +69,7 @@ def extract_frames(cap, frames_to_skip):
     print("Total frames saved:", saved_count)
 
 
-def create_pdf():
+def create_pdf(job_id="default"):
     os.makedirs("output", exist_ok=True)
 
     image_files = sorted(os.listdir("frames"), key=lambda x: int(x.split("_")[1].split(".")[0]))
@@ -85,10 +85,7 @@ def create_pdf():
         img = Image.open(img_path).convert("RGB")
         images.append(img)
 
-    pdf_path = "output/notes.pdf"
-
-    if os.path.exists(pdf_path):
-        os.remove(pdf_path)
+    pdf_path = f"output/{job_id}.pdf"
 
     images[0].save(
         pdf_path,
@@ -183,7 +180,7 @@ def format_timestamp(seconds):
     return f"{minutes:02d}:{secs:02d}"
 
 
-def main(video_path, interval_seconds):
+def main(video_path, interval_seconds, job_id="default"):
 
     if video_path is None:
         print("Video source not available. Exiting.")
@@ -197,13 +194,13 @@ def main(video_path, interval_seconds):
 
     frames_to_skip = get_frames_to_skip(cap, interval_seconds)
     extract_frames(cap, frames_to_skip)
-    create_pdf()
+    create_pdf(job_id)
 
     cap.release()
 
 
 
-def save_frames_as_pdf(frames):
+def save_frames_as_pdf(frames, job_id="default"):
     """
     frames: list of (timestamp_seconds, PIL_image) tuples
     coming directly from smart_extractor.py
@@ -235,10 +232,7 @@ def save_frames_as_pdf(frames):
         print("No frames to save.")
         return
 
-    pdf_path = "output/notes.pdf"
-
-    if os.path.exists(pdf_path):
-        os.remove(pdf_path)
+    pdf_path = f"output/{job_id}.pdf"
 
     images[0].save(
         pdf_path,
@@ -247,3 +241,65 @@ def save_frames_as_pdf(frames):
     )
 
     print(f"Smart PDF generated with {len(images)} frames at {pdf_path}")
+
+
+
+def smart_pipeline(video_path, job_id="default", progress_store=None, summary_position="right"):
+    from classifier import classify_video
+    from router import route_extraction
+    from transcriber import transcribe_video
+    from summarizer import get_transcript_for_frame, summarize_with_groq
+    from layout import create_frame_with_summary
+
+    def update(msg):
+        print(msg)
+        if progress_store is not None:
+            progress_store[job_id] = msg
+
+    update("Classifying video type...")
+    video_type = classify_video(video_path)
+
+    update(f"Detected: {video_type} - extracting frames...")
+    frames = route_extraction(video_path, video_type)
+
+    update(f"{len(frames)} frames captured - transcribing audio...")
+    segments = transcribe_video(video_path)
+
+    update("Generating AI summaries...")
+    os.makedirs("output", exist_ok=True)
+    images = []
+
+    for timestamp, pil_img in frames:
+        transcript_chunk = get_transcript_for_frame(timestamp, segments)
+        summary = summarize_with_groq(transcript_chunk)
+        final_image = create_frame_with_summary(
+            pil_img,
+            summary or "",
+            timestamp,
+            summary_position,
+        )
+
+        import io
+        buffer = io.BytesIO()
+        final_image.save(buffer, format="JPEG")
+        buffer.seek(0)
+        final_image = Image.open(buffer)
+        final_image.load()
+
+        images.append(final_image)
+
+    update("Building PDF...")
+    pdf_path = f"output/{job_id}.pdf"
+
+    if not images:
+        update("No frames found. PDF not created.")
+        return
+
+    images[0].save(
+        pdf_path,
+        save_all=True,
+        append_images=images[1:]
+    )
+
+    update("DONE")
+    print(f"Done. PDF saved at {pdf_path} with {len(images)} pages.")

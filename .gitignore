@@ -1,0 +1,13 @@
+.env
+venv/
+__pycache__/
+frames/
+input/
+uploads/
+output/
+*.mp4
+*.pdf
+*.jpg
+*.jpeg
+*.png
+.vscode/
