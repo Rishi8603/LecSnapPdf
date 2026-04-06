@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, UploadFile, File, Form, BackgroundTasks
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, StreamingResponse, Response
 import os
 import uuid
 import asyncio
@@ -15,6 +15,12 @@ progress_store = {}
 # Ensure upload + output folders exist
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("output", exist_ok=True)
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    # Return a tiny transparent icon so browsers stop retrying a missing asset.
+    return Response(status_code=204)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -68,6 +74,7 @@ async def home(request: Request):
 <html>
 <head>
     <title>LecSnapPdf</title>
+    <link rel="icon" href="/favicon.ico" sizes="any">
     <style>
         :root {{
             --bg: linear-gradient(135deg, #f4f7fb 0%, #edf4ff 100%);
@@ -176,6 +183,25 @@ async def home(request: Request):
             color: var(--muted);
             font-size: 12px;
             line-height: 1.5;
+        }}
+        .limit-box {{
+            margin-top: 14px;
+            padding: 16px 18px;
+            background: #fff8e8;
+            border: 1px solid #f2d49b;
+            border-radius: 14px;
+            color: #5f4307;
+        }}
+        .limit-title {{
+            margin: 0 0 10px;
+            font-size: 14px;
+            font-weight: 700;
+        }}
+        .limit-list {{
+            margin: 0;
+            padding-left: 18px;
+            line-height: 1.7;
+            font-size: 13px;
         }}
         .actions {{ margin-top: 26px; }}
         button {{
@@ -318,6 +344,15 @@ async def home(request: Request):
                         <p class="hint">
                             Smart mode captures frames only when the slide changes. Best for lectures, slide recordings, and screencasts.
                         </p>
+
+                        <div class="limit-box">
+                            <p class="limit-title">Limitations</p>
+                            <ul class="limit-list">
+                                <li>Smart mode works best with slide-based lectures and screencasts.</li>
+                                <li>Scrolling notebooks and blackboard videos are supported, but results may be less precise.</li>
+                                <li>Animated or fast-cut videos usually work better with Manual Interval mode.</li>
+                            </ul>
+                        </div>
 
                         <div class="option-row">
                             <label class="option-card">
