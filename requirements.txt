@@ -5,3 +5,6 @@ opencv-python
 pillow
 yt-dlp
 imagehash
+requests
+python-dotenv
+assemblyai
