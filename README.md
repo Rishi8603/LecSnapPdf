@@ -8,7 +8,7 @@ LecSnapPdf captures only the frames that matter, transcribes the audio, and adds
 
 ## 🚀 Try It
 
-**Live Web Version:** [lecsnappdf.onrender.com](https://lecsnappdf-takh.onrender.com)
+**Live Web Version:** [lecsnappdf-takh.onrender.com](https://lecsnappdf-takh.onrender.com)
 
 > YouTube URL support requires local setup (cloud platforms block yt-dlp). Upload mode works fully on the web version.
 
@@ -22,8 +22,8 @@ LecSnapPdf now goes beyond fixed-interval screenshots.
 **How it works:**
 1. **Auto-classifies** the video type using a vision AI model
 2. **Extracts only unique frames** using perceptual hashing — skips duplicate slides
-3. **Transcribes the audio** using AssemblyAI with word-level timestamps
-4. **Aligns transcript segments** to each captured frame by timestamp boundary
+3. **Transcribes the audio** using AssemblyAI (Universal-2) — word-level timings consumed at sentence granularity
+4. **Aligns each transcript span to frame boundaries** — a slide's summary uses only the audio spoken while that slide was on screen
 5. **Generates concept summaries** using Groq (LLaMA) for each slide
 6. **Renders a clean PDF** with the frame on one side and the AI summary panel beside it
 
@@ -36,7 +36,7 @@ The classifier automatically detects what kind of video you uploaded and applies
 | Blackboard / whiteboard | Lower threshold — captures gradual buildup |
 | Scrolling notebook | Higher cooldown — avoids scroll noise |
 | Coding / screen recording | Center-crop before hashing — ignores webcam |
-| Animated / fast-paced | Interval fallback with aggressive dedup |
+| Animated / fast-paced | High threshold + long cooldown — suppresses constant motion |
 
 ### 📊 Real-Time Progress
 Processing steps stream live to your browser — no guessing whether it's stuck.

@@ -551,6 +551,8 @@ async def generate_pdf(
     video_file: UploadFile | None = File(None),
     url: str = Form(None),
 ):
+    video_path = None
+
     if source_type == "upload":
         if not video_file or not video_file.filename:
             return JSONResponse({"error": "No file uploaded"}, status_code=400)
@@ -568,10 +570,9 @@ async def generate_pdf(
         if not url:
             return JSONResponse({"error": "URL missing"}, status_code=400)
 
-        video_path = core.download_youtube_video(url)
-
-        if video_path is None:
-            return JSONResponse({"error": "Download failed"}, status_code=500)
+        # The download itself is deferred into run_pipeline. yt-dlp is a
+        # blocking subprocess, so calling it here would freeze the event loop
+        # for the entire download and stall every other request.
 
     else:
         return JSONResponse({"error": "Invalid source selection"}, status_code=400)
@@ -581,17 +582,27 @@ async def generate_pdf(
 
     def run_pipeline():
         try:
+            path = video_path
+
+            if path is None:
+                progress_store[job_id] = "Downloading video from URL..."
+                path = core.download_youtube_video(url, job_id=job_id)
+
+                if path is None:
+                    progress_store[job_id] = "ERROR: Download failed"
+                    return
+
             if mode == "smart":
                 if smart_type == "ai":
-                    core.smart_pipeline(video_path, job_id, progress_store, ai_layout)
+                    core.smart_pipeline(path, job_id, progress_store, ai_layout)
                 else:
-                    frames = extract_unique_frames(video_path, threshold=25)
+                    frames = extract_unique_frames(path, threshold=25)
                     core.save_frames_as_pdf(frames, job_id)
             else:
                 if not interval:
                     progress_store[job_id] = "ERROR: Interval required"
                     return
-                core.main(video_path, interval, job_id)
+                core.main(path, interval, job_id)
             progress_store[job_id] = "DONE"
         except Exception as e:
             import traceback

@@ -127,11 +127,14 @@ def get_youtube_url():
 
 import subprocess #python se terminal command chalane ke liye
 
-def download_youtube_video(url):
+def download_youtube_video(url, job_id=None):
     os.makedirs("input", exist_ok=True)
-    output_path = "input/lecture.mp4"
 
-    
+    # One file per job. A single fixed path meant two concurrent URL jobs
+    # deleted and overwrote each other's download mid-processing.
+    output_path = f"input/{job_id}.mp4" if job_id else "input/lecture.mp4"
+
+
     if os.path.exists(output_path):
         os.remove(output_path)
 
@@ -269,8 +272,12 @@ def smart_pipeline(video_path, job_id="default", progress_store=None, summary_po
     os.makedirs("output", exist_ok=True)
     images = []
 
-    for timestamp, pil_img in frames:
-        transcript_chunk = get_transcript_for_frame(timestamp, segments)
+    for index, (timestamp, pil_img) in enumerate(frames):
+        # The next captured frame marks where this slide left the screen;
+        # None means this is the last slide, so it runs to the end.
+        next_timestamp = frames[index + 1][0] if index + 1 < len(frames) else None
+
+        transcript_chunk = get_transcript_for_frame(timestamp, segments, next_timestamp)
         summary = summarize_with_groq(transcript_chunk)
         final_image = create_frame_with_summary(
             pil_img,
